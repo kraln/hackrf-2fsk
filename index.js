@@ -6,8 +6,8 @@ module.exports = function (radio) {
   var CARRIER = 2487250000;
   var SAMPLE_RATE = 8000000;
 
-  radio.setLNAGain(30)
-  radio.setVGAGain(40)
+  radio.setLNAGain(30);
+  radio.setVGAGain(40);
 
   radio.setBandwidth(BANDWIDTH, function () {
     radio.setSampleRate(SAMPLE_RATE, function () {
@@ -18,11 +18,11 @@ module.exports = function (radio) {
   })
 
   // How many samples to measure
-  var FFT_SIZE = 2048;
+  var FFT_SIZE = 4192;
 
   var constants = initConstants(CARRIER - DEVIATION, CARRIER + DEVIATION, SAMPLE_RATE);
 
-  //  Goertzel
+  // Goertzel
   function initConstants(freq1, freq2, samplerate)
   {
     var i = 0;
@@ -83,77 +83,78 @@ module.exports = function (radio) {
   var errors = 0;
   var ones = 0;
   var zeros = 0;
-  var thresh = 2048;
+  var thresh = 128;
 
   function demod (radio) {
-    var total = 0
-      var bytes = 0
-      radio.startRx(function (data, done) {
+    radio.startRx(function (data, done) {
 
-        // Decay the maxes after each round
-        max = max * 0.1;
-        for (var i = 0; i < data.length; i+=FFT_SIZE) {
+      // Decay the maxes after each round
+      max = max * 0.1;
+      for (var i = 0; i < data.length; i+=FFT_SIZE) {
 
-          var array = new Array(FFT_SIZE);
-          for (var j = 0; j < FFT_SIZE; j++)
+        var array = new Array(FFT_SIZE);
+        for (var j = 0; j < FFT_SIZE; j++)
+        {
+          array[j] = data[i + j] / 255;
+        }
+        output = mags(array, constants);
+
+        var mag1 = output.f1mag;
+        var mag2 = output.f2mag;
+
+        // track the max number
+        if (mag1 > max)
+          max = mag1;
+
+        if (mag2 > max)
+          max = mag2;
+
+        // Threshold is 1/3 the max observed number
+        var mag1t = mag1 > max/3 ? 1 : 0;
+        var mag2t = mag2 > max/3 ? 1 : 0;
+
+        // Take counts
+        iter++;
+        if (mag1t == 1 && mag2t == 1)
+        {
+          errors++;
+        } else if (mag1t) {
+          zeros++;
+        } else if (mag2t) {
+          ones++;
+        } else {
+          errors++;
+        }
+
+        // Report if over threshold
+        if(iter > thresh)
+        {
+          console.log("Errors, Zeros, Ones: ", errors, "\t", zeros, "\t", ones, "\t\tLast Vals: ", ~~mag1, "\t", ~~mag2);
+          iter = 0;
+          errors = 0;
+          ones = 0;
+          zeros = 0;
+        }
+
+        // Detailed reporting
+        var details = 0;
+        if (details)
+        {
+          process.stdout.write("\b\b\b");
+          if (mag1t == 1 && mag2t == 1)
           {
-            array[j] = data[i + j] / 255;
+            process.stdout.write("?^?");
+          } else if (mag1t) {
+            process.stdout.write("000");
+          } else if (mag2t) {
+            process.stdout.write("111");
+          } else {
+            process.stdout.write("?v?");
           }
-          output = mags(array, constants);
+        }
+      }
 
-          var mag1 = output.f1mag;
-          var mag2 = output.f2mag;
-
-          // track tha max number
-          if (mag1 > max)
-            max = mag1;
-
-          if (mag2 > max)
-            max = mag2;
-
-          // Threshold is 1/3 the max observed number
-          var mag1t = mag1 > max/3 ? 1 : 0;
-          var mag2t = mag2 > max/3 ? 1 : 0;
-
-          iter++;
-              if (mag1t == 1 && mag2t == 1    )
-              {
-                errors++;
-              } else if (mag1t) {
-                zeros++;
-              } else if (mag2t) {
-                ones++;
-              } else {
-                errors++;
-              }
-
-              if(iter > thresh)
-              {
-                console.log(errors, zeros, ones);
-                iter = 0;
-                errors = 0;
-                ones = 0;
-                zeros = 0;
-              }
-
-            var details = 0;
-            if (details)
-            {
-              process.stdout.write("\b\b\b");
-              if (mag1t == 1 && mag2t == 1)
-              {
-                process.stdout.write("?^?");
-              } else if (mag1t) {
-                process.stdout.write("000");
-              } else if (mag2t) {
-                process.stdout.write("111");
-              } else {
-                process.stdout.write("?v?");
-              }
-            }
-          }
-
-        done()
-      })
+      done()
+    })
   }
 }
