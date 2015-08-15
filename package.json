@@ -12,5 +12,13 @@
     "görtzel"
   ],
   "author": "Jeff Katz (kraln@kraln.com)",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kraln/hackrf-2fsk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kraln/hackrf-2fsk/issues"
+  },
+  "homepage": "https://github.com/kraln/hackrf-2fsk#readme"
 }
