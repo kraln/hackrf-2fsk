@@ -7,17 +7,24 @@ var DEVIATION = 250000;
 var CARRIER = 2487250000;
 var SAMPLE_RATE = 8e6;
 
-radio.setFrequency(CARRIER)
-radio.setSampleRate(SAMPLE_RATE)
-radio.setBandwidth(DEVIATION * 4)
 radio.setLNAGain(20)
 radio.setVGAGain(30)
 radio.setTxGain(40)
 
+radio.setBandwidth(DEVIATION * 4, function () {
+  radio.setSampleRate(SAMPLE_RATE, function () {
+    radio.setFrequency(CARRIER, function () {
+      demod(radio);
+    })
+  })
+})
+
 // How many samples to measure 
-var FFT_SIZE = 32;
+var FFT_SIZE = 512;
 
 var PI = 3.1415926535;
+
+var constants = initConstants(2487500000, 2487000000, SAMPLE_RATE);
 
 //  Goertzel
 function initConstants(freq1, freq2, samplerate)
@@ -31,7 +38,6 @@ function initConstants(freq1, freq2, samplerate)
   constants.f2norm = freq2 / samplerate;
 
   console.log("norms: ", constants.f1norm, constants.f2norm);
-
 
   // Calculate the coefficients for each frequency
   constants.f1coef = 2 * Math.cos(2*PI*constants.f1norm);
@@ -78,7 +84,6 @@ function demod (radio) {
   var total = 0
   var bytes = 0
   radio.startRx(function (data, done) {
-
     for (var i = 0; i < data.length; i+=FFT_SIZE) {
 
       var array = new Array(FFT_SIZE);
@@ -93,7 +98,3 @@ function demod (radio) {
      done()
   })
 }
-
-var constants = initConstants(2487500000, 2487000000, SAMPLE_RATE);
-
-demod(radio)
