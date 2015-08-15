@@ -1,0 +1,16 @@
+{
+  "name": "hackrf-2fsk",
+  "version": "1.0.0",
+  "description": "2FSK Demodulation for HackRF Compatibles (rad1o, etc)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "hackrf",
+    "2fsk",
+    "görtzel"
+  ],
+  "author": "Jeff Katz (kraln@kraln.com)",
+  "license": "MIT"
+}
