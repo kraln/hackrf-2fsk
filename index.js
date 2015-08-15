@@ -8,6 +8,8 @@ module.exports = function (radio) {
 
   radio.setLNAGain(30);
   radio.setVGAGain(40);
+  radio.setAntennaEnable(1);
+  radio.setAmpEnable(1);
 
   radio.setBandwidth(BANDWIDTH, function () {
     radio.setSampleRate(SAMPLE_RATE, function () {
