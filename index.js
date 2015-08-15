@@ -1,15 +1,13 @@
 module.exports = function (radio) {
-  // 2FSK at 2.487GHz
-  // DEVIATION IS 250khz
 
+  // Values in HZ
   var DEVIATION = 250000;
   var BANDWIDTH = 2000000;
   var CARRIER = 2487250000;
   var SAMPLE_RATE = 8000000;
 
-  radio.setLNAGain(20)
-  radio.setVGAGain(30)
-  radio.setTxGain(40)
+  radio.setLNAGain(30)
+  radio.setVGAGain(40)
 
   radio.setBandwidth(BANDWIDTH, function () {
     radio.setSampleRate(SAMPLE_RATE, function () {
@@ -19,13 +17,9 @@ module.exports = function (radio) {
     })
   })
 
-  // How many samples to measure 
-  var FFT_SIZE = 512;
+  // How many samples to measure
+  var FFT_SIZE = 2048;
 
-  var PI = 3.1415926535;
-
-  // 2 487 545 000
-  // 2 487 500 000
   var constants = initConstants(CARRIER - DEVIATION, CARRIER + DEVIATION, SAMPLE_RATE);
 
   //  Goertzel
@@ -35,6 +29,9 @@ module.exports = function (radio) {
 
     constants = {};
 
+    console.log("freqs: ", freq1, freq2);
+    console.log("rate:  ", samplerate);
+
     // Normalize the frequencies over the sample rates
     constants.f1norm = freq1 / samplerate;
     constants.f2norm = freq2 / samplerate;
@@ -42,8 +39,8 @@ module.exports = function (radio) {
     console.log("norms: ", constants.f1norm, constants.f2norm);
 
     // Calculate the coefficients for each frequency
-    constants.f1coef = 2 * Math.cos(2*PI*constants.f1norm);
-    constants.f2coef = 2 * Math.cos(2*PI*constants.f2norm);
+    constants.f1coef = 2 * Math.cos(2*Math.PI*constants.f1norm);
+    constants.f2coef = 2 * Math.cos(2*Math.PI*constants.f2norm);
 
     console.log("coefs: ", constants.f1coef, constants.f2coef);
 
@@ -61,7 +58,7 @@ module.exports = function (radio) {
     f2[0] = 0;
     f2[1] = 0;
     f2[2] = 0;
- 
+
     // Mix each sample with the pre-calculated coefficients
     for(var i = 0; i < samples.length; i++)
     {
@@ -81,8 +78,13 @@ module.exports = function (radio) {
     return res;
   }
 
-
   var max = 0;
+  var iter = 0;
+  var errors = 0;
+  var ones = 0;
+  var zeros = 0;
+  var thresh = 2048;
+
   function demod (radio) {
     var total = 0
       var bytes = 0
@@ -95,7 +97,7 @@ module.exports = function (radio) {
           var array = new Array(FFT_SIZE);
           for (var j = 0; j < FFT_SIZE; j++)
           {
-            array[j] = data[i + j]/256;
+            array[j] = data[i + j] / 255;
           }
           output = mags(array, constants);
 
@@ -112,17 +114,44 @@ module.exports = function (radio) {
           // Threshold is 1/3 the max observed number
           var mag1t = mag1 > max/3 ? 1 : 0;
           var mag2t = mag2 > max/3 ? 1 : 0;
-          if (mag1t == 1 && mag2t == 1)
-          {
-            console.log("^\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-          } else if (mag1t) {
-            console.log("0\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-          } else if (mag2t) {
-            console.log("1\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-          } else {
-            console.log("v\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+
+          iter++;
+              if (mag1t == 1 && mag2t == 1    )
+              {
+                errors++;
+              } else if (mag1t) {
+                zeros++;
+              } else if (mag2t) {
+                ones++;
+              } else {
+                errors++;
+              }
+
+              if(iter > thresh)
+              {
+                console.log(errors, zeros, ones);
+                iter = 0;
+                errors = 0;
+                ones = 0;
+                zeros = 0;
+              }
+
+            var details = 0;
+            if (details)
+            {
+              process.stdout.write("\b\b\b");
+              if (mag1t == 1 && mag2t == 1)
+              {
+                process.stdout.write("?^?");
+              } else if (mag1t) {
+                process.stdout.write("000");
+              } else if (mag2t) {
+                process.stdout.write("111");
+              } else {
+                process.stdout.write("?v?");
+              }
+            }
           }
-        }
 
         done()
       })
