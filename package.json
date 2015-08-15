@@ -11,7 +11,7 @@
     "2fsk",
     "görtzel"
   ],
-  "dependencies": {
+  "devDependencies": {
     "hackrf": "^2.0.0"
   },
   "author": "Jeff Katz (kraln@kraln.com)",
