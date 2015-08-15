@@ -81,62 +81,50 @@ module.exports = function (radio) {
     return res;
   }
 
-  var decimate = 0;
-  var max0 = 0;
-  var max1 = 0;
 
+  var max = 0;
   function demod (radio) {
     var total = 0
-    var bytes = 0
-    radio.startRx(function (data, done) {
+      var bytes = 0
+      radio.startRx(function (data, done) {
 
-      // Decay the maxes after each round
-        max0 = max0 * 0.95;
-        max1 = max1 * 0.95;
+        // Decay the maxes after each round
+        max = max * 0.1;
+        for (var i = 0; i < data.length; i+=FFT_SIZE) {
 
-      for (var i = 0; i < data.length; i+=FFT_SIZE) {
+          var array = new Array(FFT_SIZE);
+          for (var j = 0; j < FFT_SIZE; j++)
+          {
+            array[j] = data[i + j]/256;
+          }
+          output = mags(array, constants);
 
-        var array = new Array(FFT_SIZE);
-        for (var j = 0; j < FFT_SIZE; j++)
-        {
-          array[j] = data[i + j]/256;
+          var mag1 = output.f1mag;
+          var mag2 = output.f2mag;
+
+          // track tha max number
+          if (mag1 > max)
+            max = mag1;
+
+          if (mag2 > max)
+            max = mag2;
+
+          // Threshold is 1/3 the max observed number
+          var mag1t = mag1 > max/3 ? 1 : 0;
+          var mag2t = mag2 > max/3 ? 1 : 0;
+          if (mag1t == 1 && mag2t == 1)
+          {
+            console.log("^\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+          } else if (mag1t) {
+            console.log("0\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+          } else if (mag2t) {
+            console.log("1\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+          } else {
+            console.log("v\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+          }
         }
-        output = mags(array, constants);
 
-        var mag1 = output.f1mag.toFixed(0);
-        var mag2 = output.f2mag.toFixed(0);
-
-        // track tha max number
-        if (mag1 > max0)
-          max0 = mag1;
-
-        if (mag2 > max1)
-          max1 = mag2;
-
-        max = max0 > max1? max0 : max1;
-        
-        // Threshold is 1/3 the max observed number
-        var mag1t = mag1 > max/3 ? 1 : 0;
-        var mag2t = mag2 > max/3 ? 1 : 0;
-
-        decimate++;
-
-        // Print every 25th result
-        if(decimate % 25) {
-        if (mag1t == 1 && mag2t == 1)
-        {
-          console.log("?\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-        } else if (mag1t) {
-          console.log("0\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-        } else if (mag2t) {
-          console.log("1\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-        } else {
-          console.log("?\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
-        }
-        }
-      }
-
-       done()
-    })
+        done()
+      })
   }
 }
