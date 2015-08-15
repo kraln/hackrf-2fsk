@@ -4,7 +4,7 @@ module.exports = function (radio) {
   var DEVIATION = 250000;
   var BANDWIDTH = 2000000;
   var CARRIER = 2487250000;
-  var SAMPLE_RATE = 8000000;
+  var SAMPLE_RATE = 20000000;
 
   radio.setLNAGain(30);
   radio.setVGAGain(40);
@@ -20,7 +20,7 @@ module.exports = function (radio) {
   })
 
   // How many samples to measure
-  var FFT_SIZE = 4192;
+  var FFT_SIZE = 4096;
 
   var constants = initConstants(CARRIER - DEVIATION, CARRIER + DEVIATION, SAMPLE_RATE);
 
@@ -85,7 +85,7 @@ module.exports = function (radio) {
   var errors = 0;
   var ones = 0;
   var zeros = 0;
-  var thresh = 128;
+  var thresh = 63;
 
   function demod (radio) {
     radio.startRx(function (data, done) {
@@ -111,9 +111,9 @@ module.exports = function (radio) {
         if (mag2 > max)
           max = mag2;
 
-        // Threshold is 1/3 the max observed number
-        var mag1t = mag1 > max/3 ? 1 : 0;
-        var mag2t = mag2 > max/3 ? 1 : 0;
+        // Threshold is 1/2 the max observed number
+        var mag1t = mag1 > max/2 ? 1 : 0;
+        var mag2t = mag2 > max/2 ? 1 : 0;
 
         // Take counts
         iter++;
@@ -131,7 +131,15 @@ module.exports = function (radio) {
         // Report if over threshold
         if(iter > thresh)
         {
-          console.log("Errors, Zeros, Ones: ", errors, "\t", zeros, "\t", ones, "\t\tLast Vals: ", ~~mag1, "\t", ~~mag2);
+          var val = "";
+          if (ones > zeros)
+          { 
+            val = "1";
+          } else {
+            val = "0";
+          }
+
+          console.log(val, ": Errors, Zeros, Ones: ", errors, "\t", zeros, "\t", ones, "\t\tLast Vals: ", ~~mag1, "\t", ~~mag2);
           iter = 0;
           errors = 0;
           ones = 0;
