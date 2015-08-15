@@ -3,14 +3,15 @@ module.exports = function (radio) {
   // DEVIATION IS 250khz
 
   var DEVIATION = 250000;
+  var BANDWIDTH = 2000000;
   var CARRIER = 2487250000;
-  var SAMPLE_RATE = 8e6;
+  var SAMPLE_RATE = 8000000;
 
   radio.setLNAGain(20)
   radio.setVGAGain(30)
   radio.setTxGain(40)
 
-  radio.setBandwidth(DEVIATION * 4, function () {
+  radio.setBandwidth(BANDWIDTH, function () {
     radio.setSampleRate(SAMPLE_RATE, function () {
       radio.setFrequency(CARRIER, function () {
         demod(radio);
@@ -23,7 +24,9 @@ module.exports = function (radio) {
 
   var PI = 3.1415926535;
 
-  var constants = initConstants(2487500000, 2487000000, SAMPLE_RATE);
+  // 2 487 545 000
+  // 2 487 500 000
+  var constants = initConstants(CARRIER - DEVIATION, CARRIER + DEVIATION, SAMPLE_RATE);
 
   //  Goertzel
   function initConstants(freq1, freq2, samplerate)
@@ -78,20 +81,59 @@ module.exports = function (radio) {
     return res;
   }
 
+  var decimate = 0;
+  var max0 = 0;
+  var max1 = 0;
 
   function demod (radio) {
     var total = 0
     var bytes = 0
     radio.startRx(function (data, done) {
+
+      // Decay the maxes after each round
+        max0 = max0 * 0.95;
+        max1 = max1 * 0.95;
+
       for (var i = 0; i < data.length; i+=FFT_SIZE) {
 
         var array = new Array(FFT_SIZE);
         for (var j = 0; j < FFT_SIZE; j++)
         {
-          array[j] = data[i + j]/128;
+          array[j] = data[i + j]/256;
         }
         output = mags(array, constants);
-        console.log(output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+
+        var mag1 = output.f1mag.toFixed(0);
+        var mag2 = output.f2mag.toFixed(0);
+
+        // track tha max number
+        if (mag1 > max0)
+          max0 = mag1;
+
+        if (mag2 > max1)
+          max1 = mag2;
+
+        max = max0 > max1? max0 : max1;
+        
+        // Threshold is 1/3 the max observed number
+        var mag1t = mag1 > max/3 ? 1 : 0;
+        var mag2t = mag2 > max/3 ? 1 : 0;
+
+        decimate++;
+
+        // Print every 25th result
+        if(decimate % 25) {
+        if (mag1t == 1 && mag2t == 1)
+        {
+          console.log("?\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+        } else if (mag1t) {
+          console.log("0\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+        } else if (mag2t) {
+          console.log("1\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+        } else {
+          console.log("?\ŧ", output.f1mag.toFixed(0), " \t ", output.f2mag.toFixed(0));
+        }
+        }
       }
 
        done()
