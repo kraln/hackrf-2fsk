@@ -1,4 +1,4 @@
-var radio = require('./')()
+var radio = require('hackrf')()
 
 // 2FSK at 2.487GHz
 // DEVIATION IS 250khz

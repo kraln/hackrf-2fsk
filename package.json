@@ -11,6 +11,9 @@
     "2fsk",
     "görtzel"
   ],
+  "dependencies": {
+    "hackrf": "^2.0.0"
+  },
   "author": "Jeff Katz (kraln@kraln.com)",
   "license": "MIT",
   "repository": {
